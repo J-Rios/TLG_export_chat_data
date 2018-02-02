@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 
+####################################################################################################
+
 from telethon import TelegramClient
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import ChannelParticipantsSearch
-from collections import OrderedDict
 
-import TSjson
-	
+from collections import OrderedDict
+from os import path, stat, remove, makedirs
+
+import json
+
 ####################################################################################################
 
 # Client parameters
@@ -19,6 +23,8 @@ LOGIN_CODE = "NNNNN"
 CHAT_LINK  = "https://t.me/GroupName"
 
 ####################################################################################################
+
+### Telegram basic functions ###
 
 # Get all members data from a chat
 def tlg_get_basic_info(client, chat):
@@ -82,6 +88,7 @@ def tlg_get_all_members(client, chat):
 	# Return members list
 	return members
 
+
 # Get messages data from a chat
 def tlg_get_messages(client, chat, num_msg):
 	'''Get all members information from a group/channel/chat'''
@@ -109,6 +116,7 @@ def tlg_get_messages(client, chat, num_msg):
 		messages.append(msg_data)
 	# Return the messages data list
 	return messages
+
 
 # Get all messages data from a chat
 def tlg_get_all_messages(client, chat):
@@ -141,11 +149,53 @@ def tlg_get_all_messages(client, chat):
 
 ####################################################################################################
 
+### Json files handle functions ###
+
+def json_write(file, data):
+	'''Write element data to content of JSON file'''
+	# Add the data to a empty list and use the write_list function implementation
+	data_list = []
+	data_list.append(data)
+	json_write_list(file, data_list)
+
+
+def json_write_list(file, list):
+	'''Write all the list elements data to content of JSON file'''
+	# Create the directories of the file path if them does not exists
+	directory = path.dirname(file)
+	if not path.exists(directory):
+		makedirs(directory)
+	# Try to write the data
+	try:
+		# If the file does not exists or is empty, write the data content skeleton
+		if not path.exists(file) or not stat(file).st_size:
+			with open(file, "w", encoding="utf-8") as f:
+				f.write('\n{\n    "Content": []\n}\n')
+		# Read file content structure
+		with open(file, "r", encoding="utf-8") as f:
+			content = json.load(f, object_pairs_hook=OrderedDict)
+		# For each data in list, add to the json content structure
+		for data in list:
+			if data:
+				content['Content'].append(data) # Añadir los nuevos datos al contenido del json
+		# Overwrite the file with the modified json content data
+		with open(file, "w", encoding="utf-8") as f:
+			f.write("\n{}\n".format(json.dumps(content, ensure_ascii=False, indent=4)))
+	# Catch and handle errors
+	except IOError as e:
+		print("    I/O error({0}): {1}".format(e.errno, e.strerror))
+	except ValueError:
+		print("    Error: Can't convert data value to write in the file")
+	except:
+		print("    Error: Can't open the file {}".format(file))
+
+####################################################################################################
+
 ### Main function ###
 def main():
 	'''Main Function'''
 	# Create the client and connect
-	client = TelegramClient('Session', API_ID, API_HASH)
+	client = TelegramClient("Session", API_ID, API_HASH)
 	client.connect()
 
 	# Check and login the client if needed
@@ -162,26 +212,28 @@ def main():
 			files_name = chat_info["username"]
 		else:
 			files_name = chat_info["id"]
-		fjson_chat = TSjson.TSjson("./output/{}/chat.json".format(files_name)) # Chat basic info json file
-		fjson_users = TSjson.TSjson("./output/{}/users.json".format(files_name)) # Chat basic info json file
-		fjson_messages = TSjson.TSjson("./output/{}/messages.json".format(files_name)) # Chat basic info json file
+		fjson_chat = "./output/{}/chat.json".format(files_name) # Chat basic info json file
+		fjson_users = "./output/{}/users.json".format(files_name) # Chat basic info json file
+		fjson_messages = "./output/{}/messages.json".format(files_name) # Chat basic info json file
 
 		# Save chat basic info to the output file
-		fjson_chat.clear_content()
-		fjson_chat.write_content(chat_info)
+		if path.exists(fjson_chat):
+			remove(fjson_chat)
+		json_write(fjson_chat, chat_info)
 
 		# Save chat users data to the output file
-		fjson_users.clear_content()
-		for usr in members:
-			fjson_users.write_content(usr)
+		if path.exists(fjson_users):
+			remove(fjson_users)
+		json_write_list(fjson_users, members)
 
 		# Save chat messages data to the output file
-		fjson_messages.clear_content()
-		for msg in messages:
-			fjson_messages.write_content(msg)
+		if path.exists(fjson_messages):
+			remove(fjson_messages)
+		json_write_list(fjson_messages, messages)
 
 ####################################################################################################
 
 ### Execute the main function if the file is not an imported module ###
 if __name__ == "__main__":
 	main()
+
