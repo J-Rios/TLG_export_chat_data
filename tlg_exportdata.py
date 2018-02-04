@@ -121,7 +121,7 @@ def tlg_get_messages(client, chat, num_msg):
 	# Get and save messages data in a single list
 	msgs = client.get_message_history(chat_entity, limit=num_msg)
 	# Build our messages data structures and add them to the list
-	for msg in msgs.data:
+	for msg in reversed(msgs.data):
 		msg_sender = msg.sender.first_name
 		if msg.sender.last_name:
 			msg_sender = "{} {}".format(msg_sender, msg.sender.last_name)
@@ -151,12 +151,12 @@ def tlg_get_all_messages(client, chat):
 	num_msg = client.get_message_history(chat_entity, limit=1).total
 	msgs = client.get_message_history(chat_entity, limit=num_msg)
 	# Build our messages data structures and add them to the list
-	for msg in msgs.data:
+	for msg in reversed(msgs.data):
 		msg_sender = msg.sender.first_name
 		if msg.sender.last_name:
 			msg_sender = "{} {}".format(msg_sender, msg.sender.last_name)
 		if msg.sender.username:
-			msg_sender = "{} ({})".format(msg_sender, msg.sender.username)
+			msg_sender = "{} (@{})".format(msg_sender, msg.sender.username)
 		msg_sent_date = "{}/{}/{}".format(msg.date.day, msg.date.month, msg.date.year)
 		msg_sent_time = "{}:{}:{}".format(msg.date.hour, msg.date.minute, msg.date.second)
 		msg_data = OrderedDict \
