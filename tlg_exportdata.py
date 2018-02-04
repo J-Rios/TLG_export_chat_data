@@ -1,6 +1,23 @@
 # -*- coding: utf-8 -*-
+'''
+Script:
+    tlg_exportdata.py
+Description:
+    Python script that use the Telegram Client API to get all basic usefull data of a 
+	group/channel/chat and export them in json files (chat data, members data and messages data).
+Author:
+    Jose Rios Rubio
+Creation date:
+    02/02/2018
+Last modified date:
+    04/02/2018
+Version:
+    1.2.0
+'''
 
 ####################################################################################################
+
+### Libraries/Modules ###
 
 from telethon import TelegramClient
 from telethon.tl.functions.channels import GetParticipantsRequest
@@ -13,10 +30,12 @@ import json
 
 ####################################################################################################
 
+### Constants ###
+
 # Client parameters
-api_id   = NNNNNN
-api_hash = 'ffffffffffffffffffffffffffffffff'
-phone    = '+NNNNNNNNNNN'
+API_ID   = NNNNNN
+API_HASH = 'ffffffffffffffffffffffffffffffff'
+PHONE_NUM    = '+NNNNNNNNNNN'
 LOGIN_CODE = "NNNNN"
 
 # Chat to inspect
@@ -26,15 +45,17 @@ CHAT_LINK  = "https://t.me/GroupName"
 
 ### Telegram basic functions ###
 
-# Get all members data from a chat
+# Get basic info from a chat
 def tlg_get_basic_info(client, chat):
-	'''Get basic information (title, name, ) from a group/channel/chat'''
+	'''Get basic information (id, title, name, num_users, num_messages) from a group/channel/chat'''
 	# Get the corresponding chat entity
 	chat_entity = client.get_entity(chat)
 	# Get the number of users in the chat
+	num_members_offset = client(GetParticipantsRequest(channel=chat_entity, \
+		filter=ChannelParticipantsSearch(''), offset=0, limit=0, hash=0)).count
 	num_members = client(GetParticipantsRequest(channel=chat_entity, \
-	filter=ChannelParticipantsSearch(''), offset=0, limit=0, hash=0)).count
-	# Get messages data from the chat and extract the usefull data
+		filter=ChannelParticipantsSearch(''), offset=num_members_offset, limit=0, hash=0)).count
+	# Get messages data from the chat and extract the usefull data related to chat
 	msgs = client.get_message_history(chat_entity, limit=1)
 	basic_info = OrderedDict \
 		([ \
@@ -59,10 +80,10 @@ def tlg_get_all_members(client, chat):
 	members = []
 	users = []
 	num_members = client(GetParticipantsRequest(channel=chat_entity, \
-	filter=ChannelParticipantsSearch(''), offset=0, limit=0, hash=0)).count
+		filter=ChannelParticipantsSearch(''), offset=0, limit=0, hash=0)).count
 	while True:
 		participants_i = client(GetParticipantsRequest(channel=chat_entity, \
-		filter=ChannelParticipantsSearch(''), offset=i, limit=num_members, hash=0))
+			filter=ChannelParticipantsSearch(''), offset=i, limit=num_members, hash=0))
 		if not participants_i.users:
 			break
 		users.extend(participants_i.users)
@@ -72,8 +93,9 @@ def tlg_get_all_members(client, chat):
 		usr_last_connection = ""
 		if hasattr(usr.status, "was_online"):
 			usr_last_connection = "{}/{}/{} - {}:{}:{}".format(usr.status.was_online.day, \
-			usr.status.was_online.month, usr.status.was_online.year, usr.status.was_online.hour, \
-			usr.status.was_online.minute, usr.status.was_online.second)
+				usr.status.was_online.month, usr.status.was_online.year, \
+				usr.status.was_online.hour, usr.status.was_online.minute, \
+				usr.status.was_online.second)
 		else:
 			usr_last_connection = "The user does not share this information"
 		usr_data = OrderedDict \
@@ -161,13 +183,12 @@ def json_write(file, data):
 
 def json_write_list(file, list):
 	'''Write all the list elements data to content of JSON file'''
-	# Create the directories of the file path if them does not exists
-	directory = path.dirname(file)
-	if not path.exists(directory):
-		makedirs(directory)
-	# Try to write the data
 	try:
-		# If the file does not exists or is empty, write the data content skeleton
+		# Create the directories of the file path if them does not exists
+		directory = path.dirname(file)
+		if not path.exists(directory):
+			makedirs(directory)
+		# If the file does not exists or is empty, write the JSON content skeleton
 		if not path.exists(file) or not stat(file).st_size:
 			with open(file, "w", encoding="utf-8") as f:
 				f.write('\n{\n    "Content": []\n}\n')
@@ -178,16 +199,16 @@ def json_write_list(file, list):
 		for data in list:
 			if data:
 				content['Content'].append(data) # Añadir los nuevos datos al contenido del json
-		# Overwrite the file with the modified json content data
+		# Overwrite the JSON file with the modified content data
 		with open(file, "w", encoding="utf-8") as f:
-			f.write("\n{}\n".format(json.dumps(content, ensure_ascii=False, indent=4)))
+			json.dump(content, fp=f, ensure_ascii=False, indent=4)
 	# Catch and handle errors
 	except IOError as e:
 		print("    I/O error({0}): {1}".format(e.errno, e.strerror))
 	except ValueError:
 		print("    Error: Can't convert data value to write in the file")
-	except:
-		print("    Error: Can't open the file {}".format(file))
+	except MemoryError:
+		print("    Error: You are trying to write too much data")
 
 ####################################################################################################
 
@@ -202,12 +223,10 @@ def main():
 	if not client.is_user_authorized():
 		client.sign_in(PHONE_NUM, LOGIN_CODE)
 	else:
-    	# Get basic info, all users and all messages data from a chat
+    	# Get chat basic info
 		chat_info = tlg_get_basic_info(client, CHAT_LINK)
-		members = tlg_get_all_members(client, CHAT_LINK)
-		messages = tlg_get_all_messages(client, CHAT_LINK)
 
-		# Create output JSON files
+		# Create output JSON files from basic info chat name
 		if chat_info["username"]:
 			files_name = chat_info["username"]
 		else:
@@ -221,12 +240,14 @@ def main():
 			remove(fjson_chat)
 		json_write(fjson_chat, chat_info)
 
-		# Save chat users data to the output file
+		# Get all users data from the chat and save to the output file
+		members = tlg_get_all_members(client, CHAT_LINK)
 		if path.exists(fjson_users):
 			remove(fjson_users)
 		json_write_list(fjson_users, members)
 
-		# Save chat messages data to the output file
+		# Get all messages data from the chat and save to the output file
+		messages = tlg_get_all_messages(client, CHAT_LINK)
 		if path.exists(fjson_messages):
 			remove(fjson_messages)
 		json_write_list(fjson_messages, messages)
