@@ -10,9 +10,9 @@ Author:
 Creation date:
     02/02/2018
 Last modified date:
-    04/02/2018
+    03/03/2018
 Version:
-    1.2.0
+    1.2.1
 '''
 
 ####################################################################################################
@@ -79,6 +79,7 @@ def tlg_get_all_members(client, chat):
 	i = 0
 	members = []
 	users = []
+	participants = []
 	num_members = client(GetParticipantsRequest(channel=chat_entity, \
 		filter=ChannelParticipantsSearch(''), offset=0, limit=0, hash=0)).count
 	while True:
@@ -87,26 +88,39 @@ def tlg_get_all_members(client, chat):
 		if not participants_i.users:
 			break
 		users.extend(participants_i.users)
+		participants.extend(participants_i.participants)
 		i = i + len(participants_i.users)
 	# Build our messages data structures and add them to the list
-	for usr in users:
+	i = 0
+	for i in range(0, num_members-1):
+    	# Get join date
+		join_date = ""
+		if hasattr(participants[i], "date"):
+			join_date = "{}/{}/{} - {}:{}:{}".format(participants[i].date.day, \
+				participants[i].date.month, participants[i].date.year, participants[i].date.hour, \
+				participants[i].date.minute, participants[i].date.second)
+		else:
+			join_date = "Unknown information"
+    	# Get last connection date
 		usr_last_connection = ""
-		if hasattr(usr.status, "was_online"):
-			usr_last_connection = "{}/{}/{} - {}:{}:{}".format(usr.status.was_online.day, \
-				usr.status.was_online.month, usr.status.was_online.year, \
-				usr.status.was_online.hour, usr.status.was_online.minute, \
-				usr.status.was_online.second)
+		if hasattr(users[i].status, "was_online"):
+			usr_last_connection = "{}/{}/{} - {}:{}:{}".format(users[i].status.was_online.day, \
+				users[i].status.was_online.month, users[i].status.was_online.year, \
+				users[i].status.was_online.hour, users[i].status.was_online.minute, \
+				users[i].status.was_online.second)
 		else:
 			usr_last_connection = "The user does not share this information"
 		usr_data = OrderedDict \
 			([ \
-				("id", usr.id), \
-				("username", usr.username), \
-				("first_name", usr.first_name), \
-				("last_name", usr.last_name), \
+				("id", users[i].id), \
+				("username", users[i].username), \
+				("first_name", users[i].first_name), \
+				("last_name", users[i].last_name), \
+				("Group/Channel_join", join_date), \
 				("last_connection", usr_last_connection) \
 			])
 		members.append(usr_data)
+		i = i + 1
 	# Return members list
 	return members
 
@@ -257,4 +271,3 @@ def main():
 ### Execute the main function if the file is not an imported module ###
 if __name__ == "__main__":
 	main()
-
