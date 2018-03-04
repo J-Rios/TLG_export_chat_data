@@ -20,7 +20,7 @@ Version:
 ### Libraries/Modules ###
 
 from telethon import TelegramClient
-from telethon.tl.functions.channels import GetParticipantsRequest
+from telethon.tl.functions.channels import GetParticipantsRequest, GetFullChannelRequest
 from telethon.tl.types import ChannelParticipantsSearch
 
 from collections import OrderedDict
