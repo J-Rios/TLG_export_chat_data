@@ -19,7 +19,7 @@ Version:
 
 ### Libraries/Modules ###
 
-from telethon import TelegramClient
+from telethon import TelegramClient, sync
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import ChannelParticipantsSearch
 
@@ -47,9 +47,9 @@ CHAT_LINK  = "https://t.me/GroupName"
 # Connect and Log-in/Sign-in to telegram API
 def tlg_connect(api_id, api_hash, phone_number):
 	'''Connect and Log-in/Sign-in to Telegram API. Request Sign-in code for first execution'''
-	print()
+	print('Trying to connect to Telegram...')
 	client = TelegramClient("Session", api_id, api_hash)
-	if not client.connect():
+	if not client.start():
 		print('Could not connect to Telegram servers.')
 		return None
 	else:
@@ -85,12 +85,12 @@ def tlg_get_basic_info(client, chat):
 	msgs = client.get_messages(chat_entity, limit=1)
 	basic_info = OrderedDict \
 		([ \
-			("id", msgs.data[0].to.id), \
-			("title", msgs.data[0].to.title), \
-			("username", msgs.data[0].to.username), \
+			("id", msgs[0].chat_id), \
+			("title", msgs[0].chat.title), \
+			("username", msgs[0].chat.username), \
 			("num_members", num_members), \
 			("num_messages", msgs.total), \
-			("supergroup", msgs.data[0].to.megagroup) \
+			("supergroup", msgs[0].chat.megagroup) \
 		])
 	# Return basic info dict
 	return basic_info
@@ -177,7 +177,7 @@ def tlg_get_all_messages(client, chat):
 	num_msg = client.get_messages(chat_entity, limit=1).total
 	msgs = client.get_messages(chat_entity, limit=num_msg)
 	# Build our messages data structures and add them to the list
-	for msg in reversed(msgs.data):
+	for msg in reversed(msgs):
 		msg_sender = msg.sender.first_name
 		if msg.sender.last_name:
 			msg_sender = "{} {}".format(msg_sender, msg.sender.last_name)
@@ -241,6 +241,7 @@ def json_write_list(file, list):
 ### Main function ###
 def main():
 	'''Main Function'''
+	print()
 	# Create the client and connect
 	client = tlg_connect(API_ID, API_HASH, PHONE_NUM)
 	if client is not None:
